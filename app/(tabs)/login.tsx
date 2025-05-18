@@ -1,13 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Button, Input, Layout, Text } from "@ui-kitten/components";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, View, Image, TouchableOpacity } from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useDispatch } from "react-redux";
+import { login } from "../../contexts/auth/authSlice";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const dispatch = useDispatch();
+  const router = useRouter();
 
   const toggleSecureEntry = () => {
     setSecureTextEntry(!secureTextEntry);
@@ -18,19 +23,23 @@ export default function LoginScreen() {
       setError("Por favor, completa todos los campos.");
       return;
     }
-    setError("");
-    // Aquí iría la lógica de autenticación
-    alert("¡Inicio de sesión simulado!");
+    if (email === "admin" && password === "admin") {
+      dispatch(login({ email }));
+      setError("");
+      router.replace("/(tabs)");
+    } else {
+      setError("Credenciales incorrectas. Usa admin/admin");
+    }
   };
 
   return (
     <Layout style={styles.container}>
       <View style={styles.header}>
-        {/* <Image
-          source={require('./assets/logo.png')} // Reemplaza con tu propia imagen
+        <Image
+          source={require("../../assets/images/Logo.png")} // Reemplaza con tu propia imagen
           style={styles.logo}
           resizeMode="contain"
-        /> */}
+        />
         <Text category="h3" style={styles.title}>
           Bienvenido
         </Text>
@@ -47,7 +56,9 @@ export default function LoginScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
           style={styles.input}
-          accessoryLeft={<Ionicons name="mail-outline" size={20} color="#8F9BB3" />}
+          accessoryLeft={
+            <Ionicons name="mail-outline" size={20} color="#8F9BB3" />
+          }
         />
         <Input
           placeholder="Contraseña"
@@ -55,18 +66,20 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry={secureTextEntry}
           style={styles.input}
-          accessoryLeft={<Ionicons name="lock-closed-outline" size={20} color="#8F9BB3" />}
+          accessoryLeft={
+            <Ionicons name="lock-closed-outline" size={20} color="#8F9BB3" />
+          }
           accessoryRight={
             <TouchableOpacity onPress={toggleSecureEntry}>
-              <Ionicons 
-                name={secureTextEntry ? "eye-off-outline" : "eye-outline"} 
-                size={20} 
-                color="#8F9BB3" 
+              <Ionicons
+                name={secureTextEntry ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#8F9BB3"
               />
             </TouchableOpacity>
           }
         />
-        
+
         {error ? (
           <Text status="danger" style={styles.error}>
             {error}
@@ -74,32 +87,34 @@ export default function LoginScreen() {
         ) : null}
 
         <View style={styles.forgotPassword}>
-          <Button 
-            appearance="ghost" 
+          <Button
+            appearance="ghost"
             status="basic"
             size="small"
-            onPress={() => alert('Recuperar contraseña')}
+            onPress={() => alert("Recuperar contraseña")}
           >
             ¿Olvidaste tu contraseña?
           </Button>
         </View>
 
-        <Button 
-          style={styles.button} 
+        <Button
+          style={styles.button}
           onPress={handleLogin}
           size="large"
-          accessoryRight={<Ionicons name="arrow-forward" size={20} color="white" />}
+          accessoryRight={
+            <Ionicons name="arrow-forward" size={20} color="white" />
+          }
         >
           Entrar
         </Button>
 
         <View style={styles.footer}>
           <Text appearance="hint">¿No tienes una cuenta?</Text>
-          <Button 
-            appearance="ghost" 
+          <Button
+            appearance="ghost"
             status="primary"
             size="small"
-            onPress={() => alert('Ir a registro')}
+            onPress={() => alert("Ir a registro")}
           >
             Regístrate
           </Button>
@@ -115,10 +130,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 48,
   },
   logo: {
@@ -128,8 +143,8 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: 8,
-    fontWeight: 'bold',
-    color: '#3366FF',
+    fontWeight: "bold",
+    color: "#3366FF",
   },
   subtitle: {
     marginBottom: 32,
@@ -141,7 +156,7 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
     borderRadius: 10,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -154,8 +169,8 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 24,
     borderRadius: 10,
-    backgroundColor: '#3366FF',
-    borderColor: 'transparent',
+    backgroundColor: "#3366FF",
+    borderColor: "transparent",
     shadowColor: "#3366FF",
     shadowOffset: {
       width: 0,
@@ -170,13 +185,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   forgotPassword: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     marginBottom: 8,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 24,
   },
 });

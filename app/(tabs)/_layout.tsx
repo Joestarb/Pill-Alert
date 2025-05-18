@@ -51,6 +51,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="chevron.right" color={color} />
           ), // Usar un ícono diferente para login
+              tabBarStyle: { display: "none" }, // Oculta la barra en esta pestaña
+
         }}
       />
     </Tabs>

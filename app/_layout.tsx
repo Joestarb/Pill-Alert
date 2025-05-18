@@ -9,6 +9,8 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
+import { Provider } from "react-redux";
+import store from "../contexts/store";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 
@@ -24,17 +26,21 @@ export default function RootLayout() {
   }
 
   return (
-    <ApplicationProvider
-      {...eva}
-      theme={colorScheme === "dark" ? eva.dark : eva.light}
-    >
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </ApplicationProvider>
+    <Provider store={store}>
+      <ApplicationProvider
+        {...eva}
+        theme={colorScheme === "dark" ? eva.dark : eva.light}
+      >
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ApplicationProvider>
+    </Provider>
   );
 }
