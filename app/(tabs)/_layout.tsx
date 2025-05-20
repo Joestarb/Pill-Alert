@@ -26,35 +26,30 @@ export default function TabLayout() {
         }),
       }}
     >
+
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "index",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="login"
         options={{
-          title: "Login",
+          title: "login",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="chevron.right" color={color} />
-          ), // Usar un ícono diferente para login
-              tabBarStyle: { display: "none" }, // Oculta la barra en esta pestaña
+            <IconSymbol size={28} name="house.fill" color={color} />
+          ),
+              tabBarButton: () => null, 
+              tabBarStyle: { display: 'none' }, // Oculta el menú inferior solo en esta pantalla
+
 
         }}
       />
+      
     </Tabs>
   );
 }
