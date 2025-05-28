@@ -80,7 +80,7 @@ function Perfil() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView style={styles.scrollContainer}>
-        <View style={[styles.header, { backgroundColor: colors.tint }]}>
+        <View style={[styles.header, { backgroundColor: 'black'}]}>
           <Text style={styles.headerTitle}>Mi Perfil</Text>
           <TouchableOpacity
             style={styles.editButton}
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'black',
+    color: 'white',
   },
   editButton: {
     padding: 8,
