@@ -22,9 +22,8 @@ function Perfil() {
   const [userInfo, setUserInfo] = useState({
     nombre: 'Juan Pérez',
     email: 'juan.perez@email.com',
-    telefono: '+52 555 123 4567',
-    bio: 'Desarrollador apasionado por la tecnología móvil y las experiencias de usuario.',
-    ubicacion: 'Ciudad de México, México',
+    contraseña: '***********',
+    dispositivo: 'wearable 3',
   });
   
   const [editedInfo, setEditedInfo] = useState({ ...userInfo });
@@ -119,22 +118,15 @@ function Perfil() {
           />
           
           <ProfileField
-            label="Teléfono"
-            value={editedInfo.telefono}
-            onChangeText={(text) => setEditedInfo({ ...editedInfo, telefono: text })}
+            label="Contraseña"
+            value={editedInfo.contraseña}
+            onChangeText={(text) => setEditedInfo({ ...editedInfo, contraseña: text })}
           />
           
           <ProfileField
-            label="Ubicación"
-            value={editedInfo.ubicacion}
-            onChangeText={(text) => setEditedInfo({ ...editedInfo, ubicacion: text })}
-          />
-          
-          <ProfileField
-            label="Biografía"
-            value={editedInfo.bio}
-            onChangeText={(text) => setEditedInfo({ ...editedInfo, bio: text })}
-            multiline={true}
+            label="dispositivo"
+            value={editedInfo.dispositivo}
+            onChangeText={(text) => setEditedInfo({ ...editedInfo, dispositivo: text })}
           />
         </View>
 
