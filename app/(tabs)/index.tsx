@@ -1,8 +1,8 @@
 
 import { Redirect } from "expo-router";
+import { Text, View } from "react-native";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../contexts/store";
-import { Text, View } from "react-native";
 
 export default function HomeScreen() {
   const isAuthenticated = useSelector(
