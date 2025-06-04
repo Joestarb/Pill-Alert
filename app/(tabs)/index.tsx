@@ -5,6 +5,7 @@ import type { RootState } from "../../contexts/store";
 import { Text, View , Button} from "react-native";
 import NotiModal from "@/components/NotiModal";
 import React, { useState } from 'react';
+import AsignarMedicamentoScreen from './AsignarMedicamentoScreen';
 
 export default function HomeScreen() {
   const isAuthenticated = useSelector(
@@ -19,9 +20,8 @@ export default function HomeScreen() {
 
   // Aquí puedes renderizar el contenido principal de la pantalla Home
   return (
-    <View>
-      <Text>index</Text>
-      <Button title="Mostrar notificación" onPress={() => setShowModal(true)} />
+    <View >
+     <Button title="Mostrar notificación" onPress={() => setShowModal(true)} />
       <NotiModal
       visible={showModal}
       onClose={() => setShowModal(false)}
