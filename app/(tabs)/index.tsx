@@ -14,9 +14,9 @@ export default function HomeScreen() {
 
   const [showModal, setShowModal] = useState(false);
 
-  // if (!isAuthenticated) {
-  //   return <Redirect href="/login" />;
-  // }
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
 
   // Aquí puedes renderizar el contenido principal de la pantalla Home
   return (

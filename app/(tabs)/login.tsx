@@ -3,8 +3,9 @@ import { Button, Input, Layout, Text } from "@ui-kitten/components";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
-import { useDispatch } from "react-redux";
-import { login } from "../../contexts/auth/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { loginWithSupabase } from "../../contexts/auth/authThunks";
+import type { RootState } from "../../contexts/store";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -13,22 +14,23 @@ export default function LoginScreen() {
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const dispatch = useDispatch();
   const router = useRouter();
+  const auth = useSelector((state: RootState) => state.auth);
 
   const toggleSecureEntry = () => {
     setSecureTextEntry(!secureTextEntry);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       setError("Por favor, completa todos los campos.");
       return;
     }
-    if (email === "admin" && password === "admin") {
-      dispatch(login({ email }));
-      setError("");
+    setError("");
+    const result = await dispatch<any>(loginWithSupabase({ email, password }));
+    if (result.meta.requestStatus === "fulfilled") {
       router.replace("/(tabs)");
     } else {
-      setError("Credenciales incorrectas. Usa admin/admin");
+      setError(auth.error || "Credenciales incorrectas");
     }
   };
 
@@ -79,12 +81,16 @@ export default function LoginScreen() {
             </TouchableOpacity>
           }
         />
-
         {error ? (
           <Text status="danger" style={styles.error}>
             {error}
           </Text>
         ) : null}
+        {auth.loading && (
+          <Text style={{ textAlign: "center", marginBottom: 8 }}>
+            Cargando...
+          </Text>
+        )}
 
         <View style={styles.forgotPassword}>
           <Button
