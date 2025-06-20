@@ -1,30 +1,74 @@
-import React from 'react';
-import { View, StyleSheet, SafeAreaView, Image } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import { View, StyleSheet, SafeAreaView, Image, ListRenderItemInfo } from 'react-native';
 import { Layout, Text, List } from '@ui-kitten/components';
-
-const data = [
-    { time: '08:10', patient: 'Juan', medication: 'Paracetamol', status: 'done' },
-    { time: '09:20', patient: 'Luis Gómez', medication: 'Amoxicilina', status: 'done' },
-    { time: '11:20', patient: 'Luis Gómez', medication: 'Aspirina', status: 'done' },
-    { time: '13:20', patient: 'Luis Gómez', medication: 'Amoxicilina', status: 'done' },
-    { time: '15:20', patient: 'María López', medication: 'Ibuprofeno', status: 'done' },
-    { time: '18:20', patient: 'Roberto Silva', medication: 'Omeprazol', status: 'done' },
-    { time: '20:00', patient: 'Luis Gómez', medication: 'Amoxicilina', status: 'pending' },
-    { time: '21:00', patient: 'Jose Dominguez', medication: 'Amoxicilina', status: 'pending' },
-];
+import { supabase } from '@/utils/supabase';
+import { fetchMedication, medicationItem, MedicationResult } from '@/api/supabaseMedication';
 
 export default function ListaHoriario() {
-    const barHeight = 40 + data.length * 65; // Ajustar tamaño dinámico según el número de pacientes
+    const [medications, setMedications] = useState<medicationItem[]>([]);
+    const [groupName, setGroupName] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    const renderItem = ({ item }) => {
-        let imageSource = item.status === 'done' 
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                
+                // Obtener el email del usuario loggeado
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user?.email) {
+                    console.error('No se encontró usuario loggeado');
+                    setMedications([]);
+                    setGroupName('Usuario no encontrado');
+                    return;
+                }
+
+                console.log('Usuario loggeado:', user.email);
+
+                // Obtener medicamentos filtrados por grupo
+                const result: MedicationResult = await fetchMedication(user.email);
+                
+                console.log('Resultado obtenido:', result);
+                
+                setMedications(result.items);
+                setGroupName(result.groupName);
+                
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                setMedications([]);
+                setGroupName('Error al cargar');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
+    const dataToRender = medications.length > 0
+        ? medications
+        : [{
+            id: 0,
+            time: '00:00',
+            patient: 'Sin pacientes',
+            medication: 'Sin medicamentos',
+            status: 'pending' as 'pending'
+        }];
+
+    const dispGroup = groupName.trim().length > 0 ? groupName : "Sin grupo";
+    
+    const barHeight = 60 + medications.length * 65;
+    
+    const renderItem = ({ item }: ListRenderItemInfo<medicationItem>) => {
+        const imageSource = item.status === 'done' 
             ? require('../../assets/images/veriIcon.png') 
             : require('../../assets/images/clockIcon.png');
 
         return (
             <View style={styles.card}>
                 <View style={styles.itemContent}>
-                    <Text style={styles.time}>{item.time}</Text>
+                    <Text style={styles.time}>{item.time || 'Sin horario'}</Text>
                     <View style={styles.medBox}>
                         <Text category="s1">{item.patient}</Text>
                         <Text category="c1">{item.medication}</Text>
@@ -35,10 +79,21 @@ export default function ListaHoriario() {
         );
     };
 
+    if (loading) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={styles.loadtext}>Cargando medicamentos...</Text>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
             <View style={styles.header}>
                 <Text style={styles.title}>Lista de Horarios</Text>
+            </View>
+            <View style={{alignItems: 'center'}}>
+                <Text style={styles.subtitle}>Grupo: {dispGroup}</Text>
             </View>
             <View style={styles.mainContainer}>
                 <View style={[styles.sideBarContainer, { height: barHeight }]}>
@@ -49,7 +104,7 @@ export default function ListaHoriario() {
 
                 <Layout style={[styles.container, {padding: 16}]}>
                     <List 
-                        data={data} 
+                        data={dataToRender} 
                         renderItem={renderItem} 
                         contentContainerStyle={{ backgroundColor: 'white', flexGrow: 1 }} 
                     />
@@ -79,6 +134,17 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
+        color: '#212529',
+    },
+    subtitle: {
+        alignItems: 'center',
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#212529',
+    },
+    loadtext: {
+        alignItems: 'center',
+        fontSize: 20,
         color: '#212529',
     },
     sideBarContainer: {
