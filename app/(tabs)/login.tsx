@@ -19,11 +19,11 @@ export default function LoginScreen() {
   };
 
   const handleLogin = () => {
-    if (!email || !password) {
-      setError("Por favor, completa todos los campos.");
-      return;
-    }
-    if (email === "admin" && password === "admin") {
+    // if (!email || !password) {
+    //   setError("Por favor, completa todos los campos.");
+    //   return;
+    // }
+    if (true) {
       dispatch(login({ email }));
       setError("");
       router.replace("/(tabs)");
