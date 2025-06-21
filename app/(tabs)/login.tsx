@@ -6,6 +6,7 @@ import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { loginWithSupabase } from "../../contexts/auth/authThunks";
 import type { RootState } from "../../contexts/store";
+import { saveSession } from "../../utils/session";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -27,7 +28,10 @@ export default function LoginScreen() {
     }
     setError("");
     const result = await dispatch<any>(loginWithSupabase({ email, password }));
-    if (result.meta.requestStatus === "fulfilled") {
+    console.log("Login result:", result);
+    if (result.meta.requestStatus === "fulfilled" && result.payload) {
+      // Guardar sesión en AsyncStorage solo si hay usuario válido
+      await saveSession(result.payload);
       router.replace("/(tabs)");
     } else {
       setError(auth.error || "Credenciales incorrectas");
