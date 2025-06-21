@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import UserCard from "../../components/UserCard";
 import {
   View,
@@ -10,9 +10,13 @@ import {
   SafeAreaView,
   StatusBar,
   useWindowDimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
+import { supabase } from "@/utils/supabase";
 
 interface MedicamentoAsignado {
+  id: number;
   nombre: string;
 }
 
@@ -22,32 +26,105 @@ interface Usuario {
   medicamentos: MedicamentoAsignado[];
 }
 
-const medicamentosDisponibles: string[] = [
-  "Paracetamol",
-  "Ibuprofeno",
-  "Amoxicilina",
-  "Omeprazol",
-  "Aspirina",
-  "Loratadina",
-];
-
-const usuariosIniciales: Usuario[] = [
-  { id: 1, nombre: "Carlos Pérez", medicamentos: [] },
-  { id: 2, nombre: "Ana García", medicamentos: [] },
-  { id: 3, nombre: "Luis Gómez", medicamentos: [] },
-  { id: 4, nombre: "María López", medicamentos: [] },
-  { id: 5, nombre: "Roberto Silva", medicamentos: [] },
-];
+interface Medicamento {
+  id: number;
+  nombre: string;
+}
 
 export default function AsignacionSimpleScreen(): JSX.Element {
-  const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciales);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [medicamentosDisponibles, setMedicamentosDisponibles] = useState<
+    Medicamento[]
+  >([]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
-  const [medicamentoSeleccionado, setMedicamentoSeleccionado] = useState<string | null>(null);
+  const [usuarioSeleccionado, setUsuarioSeleccionado] =
+    useState<Usuario | null>(null);
+  const [medicamentoSeleccionado, setMedicamentoSeleccionado] = useState<
+    number | null
+  >(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const { width, height } = useWindowDimensions();
   const isSmallScreen = width < 360;
   const isLargeScreen = width > 400;
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    await Promise.all([obtenerPacientes(), obtenerMedicamentos()]);
+    setLoading(false);
+  };
+
+  const obtenerPacientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select(
+          `
+          user_id,
+          user_name,
+          medication_consumed (
+            medication_consumed_id,
+            fk_medication_id,
+            medications (
+              medications_id,
+              medications
+            )
+          )
+        `
+        )
+        .eq("fk_role_id", 2)
+        .order("user_name");
+
+      if (error) {
+        console.error("Error obteniendo pacientes:", error);
+        return;
+      }
+
+      const usuariosFormateados: Usuario[] = data.map((user) => ({
+        id: user.user_id,
+        nombre: user.user_name,
+        medicamentos:
+          user.medication_consumed?.map((mc) => ({
+            id: mc.fk_medication_id,
+            nombre: mc.medications?.medications || "Desconocido",
+            consumoId: mc.medication_consumed_id,
+          })) || [],
+      }));
+
+      setUsuarios(usuariosFormateados);
+    } catch (error) {
+      console.error("Error obteniendo pacientes:", error);
+      Alert.alert("Error", "No se pudieron cargar los pacientes");
+    }
+  };
+
+  const obtenerMedicamentos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("medications")
+        .select("medications_id, medications")
+        .order("medications");
+
+      if (error) {
+        console.error("Error obteniendo medicamentos:", error);
+        return;
+      }
+
+      const medicamentosFormateados = data.map((med) => ({
+        id: med.medications_id,
+        nombre: med.medications,
+      }));
+
+      setMedicamentosDisponibles(medicamentosFormateados);
+    } catch (error) {
+      console.error("Error obteniendo medicamentos:", error);
+      Alert.alert("Error", "No se pudieron cargar los medicamentos");
+    }
+  };
 
   const abrirModal = (usuario: Usuario): void => {
     setUsuarioSeleccionado(usuario);
@@ -59,42 +136,124 @@ export default function AsignacionSimpleScreen(): JSX.Element {
     setUsuarioSeleccionado(null);
   };
 
-  const asignarMedicamento = (medicamento: string): void => {
+  const asignarMedicamento = async (
+    medicamentoNombre: string
+  ): Promise<void> => {
     if (!usuarioSeleccionado) return;
 
-    const nuevoMedicamento: MedicamentoAsignado = { nombre: medicamento };
-
-    setUsuarios(prevUsuarios =>
-      prevUsuarios.map(usuario =>
-        usuario.id === usuarioSeleccionado.id
-          ? { ...usuario, medicamentos: [...usuario.medicamentos, nuevoMedicamento] }
-          : usuario
-      )
+    const medicamento = medicamentosDisponibles.find(
+      (m) => m.nombre === medicamentoNombre
     );
+    if (!medicamento) {
+      Alert.alert("Error", "Medicamento no encontrado");
+      return;
+    }
 
-    setMedicamentoSeleccionado(null);
-    cerrarModal();
+    try {
+      const { error } = await supabase.from("medication_consumed").insert({
+        fk_user_id: usuarioSeleccionado.id,
+        fk_medication_id: medicamento.id,
+        fk_schedule_id: 1,
+      });
+
+      if (error) {
+        console.error("Error asignando medicamento:", error);
+        Alert.alert("Error", "No se pudo asignar el medicamento");
+        return;
+      }
+
+      const nuevoMedicamento: MedicamentoAsignado = {
+        id: medicamento.id,
+        nombre: medicamento.nombre,
+      };
+
+      setUsuarios((prev) =>
+        prev.map((usuario) =>
+          usuario.id === usuarioSeleccionado.id
+            ? {
+                ...usuario,
+                medicamentos: [...usuario.medicamentos, nuevoMedicamento],
+              }
+            : usuario
+        )
+      );
+
+      setMedicamentoSeleccionado(null);
+      cerrarModal();
+      Alert.alert("Éxito", "Medicamento asignado correctamente");
+    } catch (error) {
+      console.error("Error asignando medicamento:", error);
+      Alert.alert("Error", "No se pudo asignar el medicamento");
+    }
   };
 
-  const removerMedicamentoIndividual = (usuarioId: number, nombre: string) => {
-    setUsuarios(prev =>
-      prev.map(usuario =>
-        usuario.id === usuarioId
-          ? {
-              ...usuario,
-              medicamentos: usuario.medicamentos.filter(m => m.nombre !== nombre),
-            }
-          : usuario
-      )
-    );
+  const removerMedicamentoIndividual = async (
+    usuarioId: number,
+    medicamentoId: number
+  ) => {
+    try {
+      const usuario = usuarios.find((u) => u.id === usuarioId);
+      const medicamento = usuario?.medicamentos.find(
+        (m) => m.id === medicamentoId
+      );
+      if (!medicamento) return;
+
+      const { error } = await supabase
+        .from("medication_consumed")
+        .delete()
+        .eq("fk_medication_id", medicamento.id)
+        .eq("fk_user_id",usuarioId );
+
+      if (error) {
+        console.error("Error eliminando medicamento:", error);
+        Alert.alert("Error", "No se pudo eliminar el medicamento");
+        return;
+      }
+
+      setUsuarios((prev) =>
+        prev.map((usuario) =>
+          usuario.id === usuarioId
+            ? {
+                ...usuario,
+                medicamentos: usuario.medicamentos.filter(
+                  (m) => m.id !== medicamentoId
+                ),
+              }
+            : usuario
+        )
+      );
+
+      Alert.alert("Éxito", "Medicamento eliminado correctamente");
+    } catch (error) {
+      console.error("Error eliminando medicamento:", error);
+      Alert.alert("Error", "No se pudo eliminar el medicamento");
+    }
   };
 
-  const removerTodosLosMedicamentos = (usuarioId: number) => {
-    setUsuarios(prev =>
-      prev.map(usuario =>
-        usuario.id === usuarioId ? { ...usuario, medicamentos: [] } : usuario
-      )
-    );
+  const removerTodosLosMedicamentos = async (usuarioId: number) => {
+    try {
+      const { error } = await supabase
+        .from("medication_consumed")
+        .delete()
+        .eq("fk_user_id", usuarioId);
+
+      if (error) {
+        console.error("Error eliminando todos los medicamentos:", error);
+        Alert.alert("Error", "No se pudieron eliminar los medicamentos");
+        return;
+      }
+
+      setUsuarios((prev) =>
+        prev.map((usuario) =>
+          usuario.id === usuarioId ? { ...usuario, medicamentos: [] } : usuario
+        )
+      );
+
+      Alert.alert("Éxito", "Todos los medicamentos eliminados correctamente");
+    } catch (error) {
+      console.error("Error eliminando todos los medicamentos:", error);
+      Alert.alert("Error", "No se pudieron eliminar los medicamentos");
+    }
   };
 
   const renderUsuario = ({ item }: { item: Usuario }) => (
@@ -102,22 +261,35 @@ export default function AsignacionSimpleScreen(): JSX.Element {
       nombre={item.nombre}
       medicamentos={item.medicamentos}
       onAsignar={() => abrirModal(item)}
-      onEliminarMedicamento={(nombre) => removerMedicamentoIndividual(item.id, nombre)}
+      onEliminarMedicamento={(nombre) =>
+        removerMedicamentoIndividual(item.id, nombre)
+      }
       onEliminarTodos={() => removerTodosLosMedicamentos(item.id)}
       isSmallScreen={isSmallScreen}
       isLargeScreen={isLargeScreen}
     />
   );
 
-  const renderMedicamento = (medicamento: string): JSX.Element => (
+  const renderMedicamento = (medicamento: Medicamento): JSX.Element => (
     <TouchableOpacity
-      key={medicamento}
+      key={medicamento.id}
       style={styles.opcionMedicamento}
-      onPress={() => asignarMedicamento(medicamento)}
+      onPress={() => asignarMedicamento(medicamento.nombre)}
     >
-      <Text style={styles.textoMedicamento}>{medicamento}</Text>
+      <Text style={styles.textoMedicamento}>{medicamento.nombre}</Text>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={styles.loadingText}>Cargando datos...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,7 +298,8 @@ export default function AsignacionSimpleScreen(): JSX.Element {
       <View style={styles.header}>
         <Text style={styles.titulo}>Asignación de Medicamentos</Text>
         <Text style={styles.subtitulo}>
-          {usuarios.filter(u => u.medicamentos.length > 0).length} de {usuarios.length} usuarios con medicamento
+          {usuarios.filter((u) => u.medicamentos.length > 0).length} de{" "}
+          {usuarios.length} usuarios con medicamento
         </Text>
       </View>
 
@@ -138,19 +311,31 @@ export default function AsignacionSimpleScreen(): JSX.Element {
         contentContainerStyle={styles.listaContainer}
         numColumns={isLargeScreen ? 2 : 1}
         columnWrapperStyle={isLargeScreen ? styles.columnWrapper : undefined}
+        refreshing={loading}
+        onRefresh={cargarDatos}
       />
 
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={cerrarModal}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={cerrarModal}
+      >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: height * 0.8 }]}>
             <Text style={styles.modalTitulo}>Seleccionar medicamento para</Text>
-            <Text style={styles.modalSubtitulo}>{usuarioSeleccionado?.nombre}</Text>
+            <Text style={styles.modalSubtitulo}>
+              {usuarioSeleccionado?.nombre}
+            </Text>
 
             <View style={styles.medicamentosContainer}>
               {medicamentosDisponibles.map(renderMedicamento)}
             </View>
 
-            <TouchableOpacity style={styles.botonCancelar} onPress={cerrarModal}>
+            <TouchableOpacity
+              style={styles.botonCancelar}
+              onPress={cerrarModal}
+            >
               <Text style={styles.textoBotonCancelar}>Cancelar</Text>
             </TouchableOpacity>
           </View>
@@ -162,6 +347,8 @@ export default function AsignacionSimpleScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fa" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, fontSize: 16, color: "#6c757d" },
   header: {
     padding: 20,
     backgroundColor: "#fff",
