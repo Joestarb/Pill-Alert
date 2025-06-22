@@ -6,7 +6,6 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import NotiModal from "@/components/NotiModal";
 import React, { useState } from 'react';
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import MedicationCard from "@/components/MedicationCard";
 
 export default function HomeScreen() {
@@ -28,12 +27,12 @@ export default function HomeScreen() {
     { id: '2', action: 'Recordatorio Ibuprofeno', time: 'Hace 5 horas', status: 'missed' },
   ];
 
-  // if (!isAuthenticated) {
-  //   return <Redirect href="/login" />;
-  // }
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
@@ -109,7 +108,7 @@ export default function HomeScreen() {
         visible={showModal}
         onClose={() => setShowModal(false)}
       />
-    </ThemedView>
+    </View>
   );
 }
 

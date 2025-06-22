@@ -37,7 +37,6 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
       <Tabs.Screen name="RemindersScreen" options={{ title: 'Recordatorios' }} />
       <Tabs.Screen name="MedicationHistoryScreen" options={{ title: 'Historial' }} />
-      <Tabs.Screen name="SettingsScreen" options={{ title: 'Ajustes' }} />
       <Tabs.Screen name="UserProfileScreen" options={{ title: 'Perfil' }} />
 
        <Tabs.Screen
