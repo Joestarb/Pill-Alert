@@ -29,10 +29,10 @@ export default function RootLayout() {
     <Provider store={store}>
       <ApplicationProvider
         {...eva}
-        theme={colorScheme === "dark" ? eva.dark : eva.light}
+        theme={colorScheme === "dark" ? eva.light : eva.light}
       >
         <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          value={colorScheme === "dark" ? DefaultTheme : DefaultTheme}
         >
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
