@@ -13,12 +13,12 @@ export interface MedicationResult {
     items: medicationItem[];
 }
 
-export const fetchMedication = async (nurseEmail: string): Promise<MedicationResult> => {
+export const fetchMedication = async (idNurse: string): Promise<MedicationResult> => {
     // Buscar el usuario loggeado
     const { data: user, error: userError } = await supabase
         .from('users')
         .select('user_id, fk_group_id')
-        .eq('user_email', nurseEmail)
+        .eq('user_id', idNurse)
         .single();
 
     if (userError || !user) {
@@ -58,6 +58,22 @@ export const fetchMedication = async (nurseEmail: string): Promise<MedicationRes
 
     console.log('Patient IDs found:', patientIDs);
 
+        // Obtener registros de medicamentos 
+    console.log("Consulta a medication_consumed:", {
+        table: 'medication_consumed',
+        select: [
+            "medication_consumed_id",
+            "fk_schedule_id",
+            "fk_medication_id",
+            "fk_user_id",
+            "users!fk_user_id(user_name)",
+            "medications!fk_medication_id(medications)",
+            "schedules!fk_schedule_id(schedule)"
+        ],
+        filter: {
+            fk_user_id: patientIDs
+        }
+    });
     // Obtener registros de medicamentos 
     const { data, error } = await supabase
         .from('medication_consumed')
