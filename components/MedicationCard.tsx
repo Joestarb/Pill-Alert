@@ -49,7 +49,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({
           </View>
         </View>
         
-        {status === 'pending' && (
+        {/* {status === 'pending' && (
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.actionButton, styles.completeButton]}>
               <Ionicons name="checkmark" size={18} color="#fff" />
@@ -61,7 +61,7 @@ const MedicationCard: React.FC<MedicationCardProps> = ({
               <ThemedText style={styles.actionButtonText}>Omitir</ThemedText>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
       </ThemedView>
     </TouchableOpacity>
   );

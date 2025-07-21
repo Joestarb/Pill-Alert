@@ -112,9 +112,9 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="subtitle">Próximos medicamentos</ThemedText>
-            <TouchableOpacity>
+            {/* <TouchableOpacity>
               <ThemedText style={styles.seeAll}>Ver todos</ThemedText>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           {loading ? (
             <ActivityIndicator size="large" color="#4f8cff" />
