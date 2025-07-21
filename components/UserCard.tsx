@@ -1,10 +1,10 @@
 import React from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface MedicamentoAsignado {
@@ -12,6 +12,7 @@ interface MedicamentoAsignado {
   nombre: string;
   horario: string;
   status: 'pending' | 'done';
+  fecha?: string; // Added for compatibility with new_code
 }
 
 interface UserCardProps {
@@ -62,32 +63,47 @@ const UserCard: React.FC<UserCardProps> = ({
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
         >
-          {medicamentos.map((medicamento) => (
-            <View key={medicamento.id} style={styles.medicamentoItem}>
-              <View style={styles.medicamentoInfo}>
-                <Text style={styles.medicamentoNombre}>
-                  {medicamento.nombre}
-                </Text>
-                <Text style={styles.medicamentoHorario}>
-                  📅 {medicamento.horario}
-                </Text>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(medicamento.status) }
-                ]}>
-                  <Text style={styles.statusText}>
-                    {getStatusText(medicamento.status)}
+          {medicamentos.map((medicamento) => {
+            // Formatear la fecha si existe
+            let fechaHora = '';
+            if (medicamento.fecha) {
+              const fechaObj = new Date(medicamento.fecha);
+              fechaHora = fechaObj.toLocaleString('es-ES', {
+                day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+              });
+            } else if (medicamento.horario) {
+              fechaHora = medicamento.horario;
+            }
+            return (
+              <View key={medicamento.id} style={styles.medicamentoItem}>
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <Text style={styles.medicamentoNombre}>
+                    {medicamento.nombre}
                   </Text>
+                  {fechaHora ? (
+                    <Text style={styles.medicamentoFechaHora}>  |  {fechaHora}</Text>
+                  ) : null}
                 </View>
+                {/* Si existe status, mostrar badge */}
+                {medicamento.status && (
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(medicamento.status) }
+                  ]}>
+                    <Text style={styles.statusText}>
+                      {getStatusText(medicamento.status)}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.botonEliminar}
+                  onPress={() => onEliminarMedicamento(medicamento.id)}
+                >
+                  <Text style={styles.textoEliminar}>✕</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.botonEliminar}
-                onPress={() => onEliminarMedicamento(medicamento.id)}
-              >
-                <Text style={styles.textoEliminar}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
       ) : (
         <View style={styles.sinMedicamentos}>
@@ -241,6 +257,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 12,
+  },
+  // Agregar estilo para la fecha/hora al lado del nombre
+  medicamentoFechaHora: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginLeft: 4,
   },
 });
 
