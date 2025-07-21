@@ -46,7 +46,19 @@ export default function HomeScreen() {
     cargarUsuarioYMedicamentos();
   }, []);
 
-  // Datos de ejemplo para actividad reciente (puedes adaptar esto a tu modelo real)
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Sin fecha";
+    const options: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    return date.toLocaleString("es-MX", options);
+  };
+
   const recentActivity = [
     {
       id: "1",
@@ -115,8 +127,8 @@ export default function HomeScreen() {
               <MedicationCard
                 key={med.id}
                 name={med.medication}
-                time={med.time}
-                dosage={""} // Si tienes dosis, pásala aquí
+                time={formatDate(med.time)}  // ✅ Aquí se formatea la fecha
+                dosage={""}
                 status={med.status}
               />
             ))
@@ -164,9 +176,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  // Tus estilos originales...
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -257,57 +268,5 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 14,
     color: "#64748b",
-  },
-  quickActions: {
-    flexDirection: "row",
-    gap: 16,
-    marginTop: 12,
-  },
-  quickAction: {
-    flex: 1,
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1e293b",
-    textAlign: "center",
-  },
-  tabBar: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-    backgroundColor: "#ffffff",
-    paddingVertical: 8,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  activeTab: {
-    // Estilos para la pestaña activa
-  },
-  tabText: {
-    fontSize: 12,
-    marginTop: 4,
-    color: "#64748b",
-  },
-  activeTabText: {
-    color: "#4f8cff",
-    fontWeight: "500",
   },
 });

@@ -1,15 +1,44 @@
-import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { FlatList, StyleSheet, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
-import { Ionicons } from "@expo/vector-icons";
-
-const reminders = [
-  { id: "1", name: "Paracetamol", time: "08:00 AM", dosage: "500mg", type: "pastilla" },
-  { id: "2", name: "Ibuprofeno", time: "09:00 PM", dosage: "400mg", type: "cápsula" },
-  { id: "3", name: "Jarabe para la tos", time: "02:00 PM", dosage: "10ml", type: "líquido" },
-];
+import { fetchMedication, medicationItem } from "../../api/supabaseMedication";
 
 export default function RemindersScreen() {
+  const [reminders, setReminders] = useState<medicationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadReminders = async () => {
+    setLoading(true);
+    try {
+      const { items } = await fetchMedication("31");  // Cambia al user loggeado
+      setReminders(items);
+      console.log(" Reminders loaded:", items);
+    } catch (error) {
+      console.error(" Error loading reminders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReminders();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Sin fecha";
+    const options: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    return date.toLocaleString("es-MX", options);
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
@@ -21,51 +50,45 @@ export default function RemindersScreen() {
         </ThemedText>
       </View>
 
-      <FlatList
-        data={reminders}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <View style={styles.itemLeft}>
-              <View style={styles.iconContainer}>
-                <Ionicons 
-                  name={item.type === 'líquido' ? "flask-outline" : item.type === 'cápsula' ? "ellipse-outline" : "medkit-outline"} 
-                  size={24} 
-                  color="#4f8cff" 
-                />
+      {loading ? (
+        <ActivityIndicator size="large" color="#4f8cff" />
+      ) : (
+        <FlatList
+          data={reminders}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <View style={styles.itemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="medkit-outline" size={24} color="#4f8cff" />
+                </View>
+                <View style={styles.textContainer}>
+                  <ThemedText style={styles.name}>{item.medication}</ThemedText>
+                  <ThemedText style={styles.details}>Paciente: {item.patient}</ThemedText>
+                </View>
               </View>
-              <View style={styles.textContainer}>
-                <ThemedText style={styles.name}>{item.name}</ThemedText>
-                <ThemedText style={styles.details}>{item.dosage} • {item.type}</ThemedText>
+              <View style={styles.itemRight}>
+                <ThemedText style={styles.time}>
+                  {formatDate(item.time)}
+                </ThemedText>
               </View>
             </View>
-            <View style={styles.itemRight}>
-              <ThemedText style={styles.time}>{item.time}</ThemedText>
-              <TouchableOpacity style={styles.button} activeOpacity={0.7}>
-                <Ionicons name="pencil-outline" size={18} color="#fff" />
-              </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="notifications-off-outline" size={48} color="#cbd5e1" />
+              <ThemedText style={styles.emptyText}>No hay recordatorios</ThemedText>
             </View>
-          </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={48} color="#cbd5e1" />
-            <ThemedText style={styles.emptyText}>No hay recordatorios</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Presiona el botón para agregar uno</ThemedText>
-          </View>
-        }
-      />
-
-      <TouchableOpacity style={styles.addButton} activeOpacity={0.8}>
-        <Ionicons name="add" size={24} color="#fff" />
-        <ThemedText style={styles.addButtonText}>
-          Agregar Recordatorio
-        </ThemedText>
-      </TouchableOpacity>
+          }
+        />
+      )}
     </ThemedView>
   );
 }
+
+
+
 
 const styles = StyleSheet.create({
   container: {

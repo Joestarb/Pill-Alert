@@ -66,6 +66,7 @@ export const fetchMedication = async (idNurse: string): Promise<MedicationResult
             "fk_schedule_id",
             "fk_medication_id",
             "fk_user_id",
+              "date_medication",
             "users!fk_user_id(user_name)",
             "medications!fk_medication_id(medications)",
             "schedules!fk_schedule_id(schedule)"
@@ -82,6 +83,7 @@ export const fetchMedication = async (idNurse: string): Promise<MedicationResult
             fk_schedule_id,
             fk_medication_id,
             fk_user_id,
+            date_medication,
             users!fk_user_id(user_name),
             medications!fk_medication_id(medications),
             schedules!fk_schedule_id(schedule)
@@ -95,13 +97,14 @@ export const fetchMedication = async (idNurse: string): Promise<MedicationResult
 
     console.log('Raw medication data:', JSON.stringify(data[0], null, 2));
 
-    const items: medicationItem[] = data.map((item: any): medicationItem => ({
-        id: item.medication_consumed_id,
-        time: item.schedules?.schedule ?? 'Sin horario',
-        patient: item.users?.user_name ?? 'Desconocido',
-        medication: item.medications?.medications ?? 'Desconocido',
-        status: 'pending',
-    }));
+const items: medicationItem[] = data.map((item: any): medicationItem => ({
+  id: item.medication_consumed_id,
+  time: item.date_medication ?? 'Sin fecha',  // <-- Aquí
+  patient: item.users?.user_name ?? 'Desconocido',
+  medication: item.medications?.medications ?? 'Desconocido',
+  status: 'pending',
+}));
+
 
     return { groupName, items };
 };
