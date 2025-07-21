@@ -1,30 +1,39 @@
-import { FlatList, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { FlatList, StyleSheet, View, Text, Button } from "react-native"; // ← importa Button
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
-
-const history = [
-  { id: "1", name: "Paracetamol", date: "20/06/2025", time: "08:00 AM", dosage: "500mg", status: "Tomado" },
-  { id: "2", name: "Ibuprofeno", date: "19/06/2025", time: "09:00 PM", dosage: "400mg", status: "Pendiente" },
-  { id: "3", name: "Amoxicilina", date: "18/06/2025", time: "07:00 AM", dosage: "250mg", status: "Saltado" },
-  { id: "4", name: "Omeprazol", date: "17/06/2025", time: "08:00 AM", dosage: "20mg", status: "Tomado" },
-  { id: "5", name: "Loratadina", date: "16/06/2025", time: "07:30 PM", dosage: "10mg", status: "Tomado" },
-];
+import { fetchMedicationHistory, MedicationHistoryItem } from "../../api/supabaseMedicalHistoric";
+import { getSession } from "../../utils/session";
 
 export default function MedicationHistoryScreen() {
+  const [history, setHistory] = useState<MedicationHistoryItem[]>([]);
+
+  const load = async () => {
+    const session = await getSession();
+    if (!session?.user_id) return;
+    const result = await fetchMedicationHistory(session.user_id);
+    setHistory(result);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.title}>
           Historial de Medicamentos
         </ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Últimos 30 días
-        </ThemedText>
+        <ThemedText style={styles.subtitle}>Últimos 30 días</ThemedText>
+        <View style={styles.buttonContainer}>
+          <Button title="Actualizar" onPress={load} color="#3b82f6" />
+        </View>
       </View>
-      
+
       <FlatList
         data={history}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <View style={[styles.item, styles[`status_${item.status.toLowerCase()}`]]}>
@@ -33,9 +42,14 @@ export default function MedicationHistoryScreen() {
               <ThemedText style={styles.dosage}>{item.dosage}</ThemedText>
             </View>
             <View style={styles.itemFooter}>
-              <ThemedText style={styles.date}>
-                {item.date} • {item.time}
-              </ThemedText>
+              <View>
+                <ThemedText style={styles.date}>
+                  {item.date} • {item.time}
+                </ThemedText>
+                <Text style={{ fontSize: 14, color: "#64748b" }}>
+                  Paciente: <Text style={{ fontWeight: "600" }}>{item.patient}</Text>
+                </Text>
+              </View>
               <ThemedText style={[styles.status, styles[`statusText_${item.status.toLowerCase()}`]]}>
                 {item.status}
               </ThemedText>
@@ -61,6 +75,10 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
     paddingTop: 16,
+  },
+  buttonContainer: {
+    marginTop: 12,
+    alignSelf: "flex-start",
   },
   title: {
     fontSize: 28,
