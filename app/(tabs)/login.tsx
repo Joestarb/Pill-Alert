@@ -28,7 +28,6 @@ export default function LoginScreen() {
     }
     setError("");
     const result = await dispatch<any>(loginWithSupabase({ email, password }));
-    console.log("Login result:", result);
     if (result.meta.requestStatus === "fulfilled" && result.payload) {
       // Guardar sesión en AsyncStorage solo si hay usuario válido
       await saveSession(result.payload);
@@ -96,16 +95,6 @@ export default function LoginScreen() {
           </Text>
         )}
 
-        <View style={styles.forgotPassword}>
-          <Button
-            appearance="ghost"
-            status="basic"
-            size="small"
-            onPress={() => alert("Recuperar contraseña")}
-          >
-            ¿Olvidaste tu contraseña?
-          </Button>
-        </View>
 
         <Button
           style={styles.button}
@@ -118,17 +107,6 @@ export default function LoginScreen() {
           Entrar
         </Button>
 
-        <View style={styles.footer}>
-          <Text appearance="hint">¿No tienes una cuenta?</Text>
-          <Button
-            appearance="ghost"
-            status="primary"
-            size="small"
-            onPress={() => alert("Ir a registro")}
-          >
-            Regístrate
-          </Button>
-        </View>
       </View>
     </Layout>
   );

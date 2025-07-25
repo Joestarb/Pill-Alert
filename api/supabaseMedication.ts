@@ -56,25 +56,7 @@ export const fetchMedication = async (idNurse: string): Promise<MedicationResult
     const patientIDs = patients.map(p => p.user_id);
     if (patientIDs.length === 0) return { groupName, items: [] };
 
-    console.log('Patient IDs found:', patientIDs);
-
-        // Obtener registros de medicamentos 
-    console.log("Consulta a medication_consumed:", {
-        table: 'medication_consumed',
-        select: [
-            "medication_consumed_id",
-            "fk_schedule_id",
-            "fk_medication_id",
-            "fk_user_id",
-              "date_medication",
-            "users!fk_user_id(user_name)",
-            "medications!fk_medication_id(medications)",
-            "schedules!fk_schedule_id(schedule)"
-        ],
-        filter: {
-            fk_user_id: patientIDs
-        }
-    });
+  
     // Obtener registros de medicamentos 
     const { data, error } = await supabase
         .from('medication_consumed')
@@ -95,7 +77,6 @@ export const fetchMedication = async (idNurse: string): Promise<MedicationResult
         return { groupName, items: [] };
     }
 
-    console.log('Raw medication data:', JSON.stringify(data[0], null, 2));
 
 const items: medicationItem[] = data.map((item: any): medicationItem => ({
   id: item.medication_consumed_id,

@@ -12,18 +12,13 @@ export default function TabLayout() {
             case 'index':
               iconName = 'home-outline';
               break;
-            case 'RemindersScreen':
-              iconName = 'notifications-outline';
-              break;
             case 'MedicationHistoryScreen':
               iconName = 'medkit-outline';
               break;
-            case 'SettingsScreen':
-              iconName = 'settings-outline';
+            case 'AsignarMedicamentoScreen':
+              iconName = 'add-circle-outline';
               break;
-            case 'UserProfileScreen':
-              iconName = 'person-outline';
-              break;
+
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -35,9 +30,8 @@ export default function TabLayout() {
       })}
     >
       <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
-      <Tabs.Screen name="RemindersScreen" options={{ title: 'Recordatorios' }} />
       <Tabs.Screen name="MedicationHistoryScreen" options={{ title: 'Historial' }} />
-      <Tabs.Screen name="UserProfileScreen" options={{ title: 'Perfil' }} />
+      <Tabs.Screen name="AsignarMedicamentoScreen" options={{ title: 'Asignar Medicamento' }} />
 
        <Tabs.Screen
         name="login"

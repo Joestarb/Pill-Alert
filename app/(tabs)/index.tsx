@@ -29,7 +29,6 @@ export default function HomeScreen() {
         setUser(usuario);
         try {
           const result = await fetchMedication(usuario.user_id);
-          console.log("Fetched medications:", result);
           setMedications(result.items);
           setGroupName(result.groupName);
         } catch (e) {
@@ -80,97 +79,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <FontAwesome5 name="user" size={24} color="#4f8cff" />
-          </View>
-          <View>
-            <ThemedText type="title" style={styles.greeting}>
-              ¡Buenos días!
-            </ThemedText>
-            <ThemedText style={styles.userName}>
-              {user?.user_name || "Usuario"}
-            </ThemedText>
-            {groupName ? (
-              <ThemedText style={{ color: "#64748b", fontSize: 14 }}>
-                Grupo: {groupName}
-              </ThemedText>
-            ) : null}
-          </View>
-        </View>
-        <TouchableOpacity onPress={() => setShowModal(true)}>
-          <Ionicons name="notifications-outline" size={28} color="#64748b" />
-          <View style={styles.notificationBadge} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Contenido principal */}
-      <ScrollView style={styles.content}>
-        {/* Sección de medicamentos próximos */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Próximos medicamentos</ThemedText>
-            {/* <TouchableOpacity>
-              <ThemedText style={styles.seeAll}>Ver todos</ThemedText>
-            </TouchableOpacity> */}
-          </View>
-          {loading ? (
-            <ActivityIndicator size="large" color="#4f8cff" />
-          ) : medications.length === 0 ? (
-            <ThemedText style={{ color: "#64748b" }}>
-              No hay medicamentos próximos.
-            </ThemedText>
-          ) : (
-            medications.map((med) => (
-              <MedicationCard
-                key={med.id}
-                name={med.medication}
-                time={formatDate(med.time)}  // ✅ Aquí se formatea la fecha
-                dosage={""}
-                status={med.status}
-              />
-            ))
-          )}
-        </View>
-
-        {/* Sección de actividad reciente */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Actividad reciente</ThemedText>
-          </View>
-          {recentActivity.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View
-                style={[
-                  styles.activityIcon,
-                  activity.status === "completed"
-                    ? styles.completedIcon
-                    : styles.missedIcon,
-                ]}
-              >
-                {activity.status === "completed" ? (
-                  <MaterialIcons name="check" size={18} color="#10b981" />
-                ) : (
-                  <MaterialIcons name="close" size={18} color="#ef4444" />
-                )}
-              </View>
-              <View style={styles.activityText}>
-                <ThemedText style={styles.activityAction}>
-                  {activity.action}
-                </ThemedText>
-                <ThemedText style={styles.activityTime}>
-                  {activity.time}
-                </ThemedText>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Modal de notificaciones */}
-      <NotiModal visible={showModal} onClose={() => setShowModal(false)} />
+ 
     </View>
   );
 }

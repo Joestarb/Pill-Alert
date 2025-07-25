@@ -1,21 +1,18 @@
 import { supabase } from "@/utils/supabase";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  Modal,
   Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
-import UserCard from "../../components/UserCard";
+import ListaUsuarios from "../../components/ListaUsuarios";
+import ModalAsignarMedicamento from "../../components/ModalAsignarMedicamento";
 
 interface MedicamentoAsignado {
   id: number;
@@ -34,7 +31,7 @@ interface Medicamento {
   nombre: string;
 }
 
-export default function AsignacionSimpleScreen(): JSX.Element {
+export default function AsignacionSimpleScreen() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [medicamentosDisponibles, setMedicamentosDisponibles] = useState<
     Medicamento[]
@@ -46,6 +43,8 @@ export default function AsignacionSimpleScreen(): JSX.Element {
     number | null
   >(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [miligramos, setMiligramos] = useState<string>("");
+  const [via, setVia] = useState<string>("oral");
   const [fechaHora, setFechaHora] = useState<Date>(new Date()); // Inicializar con fecha actual
   const [mostrarDatePicker, setMostrarDatePicker] = useState<boolean>(false);
   const [mostrarTimePicker, setMostrarTimePicker] = useState<boolean>(false);
@@ -135,6 +134,8 @@ export default function AsignacionSimpleScreen(): JSX.Element {
   const abrirModal = (usuario: Usuario): void => {
     setUsuarioSeleccionado(usuario);
     setFechaHora(new Date()); // Reinicia con la fecha actual
+    setMiligramos("");
+    setVia("oral");
     setModalVisible(true);
   };
 
@@ -142,36 +143,38 @@ export default function AsignacionSimpleScreen(): JSX.Element {
     setModalVisible(false);
     setUsuarioSeleccionado(null);
     cerrarDatePickers(); // Usar la nueva función
+    setMiligramos("");
+    setVia("oral");
   };
 
   const onFechaChange = (event: any, selectedDate?: Date) => {
     // Solo cerrar en Android cuando se selecciona una fecha/hora o se cancela
     const { type } = event;
-    
-    if (Platform.OS === 'android') {
+
+    if (Platform.OS === "android") {
       // En Android, cerrar solo si se confirma o cancela
-      if (type === 'set' || type === 'dismissed') {
+      if (type === "set" || type === "dismissed") {
         setMostrarDatePicker(false);
         setMostrarTimePicker(false);
       }
     }
-    
+
     // Actualizar la fecha solo si se seleccionó una
-    if (selectedDate && type === 'set') {
+    if (selectedDate && type === "set") {
       setFechaHora(selectedDate);
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
     const { type } = event;
-    
-    if (Platform.OS === 'android') {
-      if (type === 'set' || type === 'dismissed') {
+
+    if (Platform.OS === "android") {
+      if (type === "set" || type === "dismissed") {
         setMostrarTimePicker(false);
       }
     }
-    
-    if (selectedTime && type === 'set') {
+
+    if (selectedTime && type === "set") {
       // Mantener la fecha actual y solo cambiar la hora
       const nuevaFecha = new Date(fechaHora);
       nuevaFecha.setHours(selectedTime.getHours());
@@ -196,17 +199,17 @@ export default function AsignacionSimpleScreen(): JSX.Element {
   };
 
   const formatearFecha = (fecha: Date): string => {
-    return fecha.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    return fecha.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
   const formatearHora = (fecha: Date): string => {
-    return fecha.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return fecha.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -223,6 +226,11 @@ export default function AsignacionSimpleScreen(): JSX.Element {
       return;
     }
 
+    if (!miligramos || isNaN(Number(miligramos))) {
+      Alert.alert("Error", "Por favor ingresa los miligramos correctamente.");
+      return;
+    }
+
     try {
       const existe = await supabase
         .from("medication_consumed")
@@ -232,7 +240,10 @@ export default function AsignacionSimpleScreen(): JSX.Element {
         .eq("fk_schedule_id", 1);
 
       if (existe.data && existe.data.length > 0) {
-        Alert.alert("Error", "Este medicamento ya está asignado a este usuario para este horario.");
+        Alert.alert(
+          "Error",
+          "Este medicamento ya está asignado a este usuario para este horario."
+        );
         return;
       }
 
@@ -241,6 +252,8 @@ export default function AsignacionSimpleScreen(): JSX.Element {
         fk_medication_id: medicamento.id,
         fk_schedule_id: 1,
         date_medication: fechaHora.toISOString(),
+        miligrams: Number(miligramos),
+        via,
       });
 
       if (error) {
@@ -344,30 +357,6 @@ export default function AsignacionSimpleScreen(): JSX.Element {
     }
   };
 
-  const renderUsuario = ({ item }: { item: Usuario }) => (
-    <UserCard
-      nombre={item.nombre}
-      medicamentos={item.medicamentos}
-      onAsignar={() => abrirModal(item)}
-      onEliminarMedicamento={(nombre) =>
-        removerMedicamentoIndividual(item.id, nombre)
-      }
-      onEliminarTodos={() => removerTodosLosMedicamentos(item.id)}
-      isSmallScreen={isSmallScreen}
-      isLargeScreen={isLargeScreen}
-    />
-  );
-
-  const renderMedicamento = (medicamento: Medicamento): JSX.Element => (
-    <TouchableOpacity
-      key={medicamento.id}
-      style={styles.opcionMedicamento}
-      onPress={() => asignarMedicamento(medicamento.nombre)}
-    >
-      <Text style={styles.textoMedicamento}>{medicamento.nombre}</Text>
-    </TouchableOpacity>
-  );
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -391,106 +380,38 @@ export default function AsignacionSimpleScreen(): JSX.Element {
         </Text>
       </View>
 
-      <FlatList
-        data={usuarios}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderUsuario}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listaContainer}
-        numColumns={isLargeScreen ? 2 : 1}
-        columnWrapperStyle={isLargeScreen ? styles.columnWrapper : undefined}
-        refreshing={loading}
-        onRefresh={cargarDatos}
+      <ListaUsuarios
+        usuarios={usuarios}
+        isSmallScreen={isSmallScreen}
+        isLargeScreen={isLargeScreen}
+        onAsignar={abrirModal}
+        onEliminarMedicamento={removerMedicamentoIndividual}
+        onEliminarTodos={removerTodosLosMedicamentos}
+        loading={loading}
+        cargarDatos={cargarDatos}
       />
 
-      <Modal
+      <ModalAsignarMedicamento
         visible={modalVisible}
-        transparent
-        animationType="slide"
+        usuarioSeleccionado={usuarioSeleccionado}
+        fechaHora={fechaHora}
+        mostrarDatePicker={mostrarDatePicker}
+        mostrarTimePicker={mostrarTimePicker}
+        medicamentosDisponibles={medicamentosDisponibles}
         onRequestClose={cerrarModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxHeight: height * 0.8 }]}>
-            <Text style={styles.modalTitulo}>Seleccionar medicamento para</Text>
-            <Text style={styles.modalSubtitulo}>
-              {usuarioSeleccionado?.nombre}
-            </Text>
-
-            {/* Sección de fecha y hora mejorada */}
-            <View style={styles.fechaHoraSection}>
-              <Text style={styles.fechaHoraLabel}>Fecha y hora del medicamento:</Text>
-              
-              <View style={styles.fechaHoraContainer}>
-                <TouchableOpacity
-                  style={[styles.fechaHoraPicker, mostrarDatePicker && styles.fechaHoraPickerActive]}
-                  onPress={mostrarDatePickerFecha}
-                >
-                  <Text style={styles.fechaHoraTexto}>📅 {formatearFecha(fechaHora)}</Text>
-                  <Text style={styles.fechaHoraSubTexto}>Cambiar fecha</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.fechaHoraPicker, mostrarTimePicker && styles.fechaHoraPickerActive]}
-                  onPress={mostrarDatePickerHora}
-                >
-                  <Text style={styles.fechaHoraTexto}>🕐 {formatearHora(fechaHora)}</Text>
-                  <Text style={styles.fechaHoraSubTexto}>Cambiar hora</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Botón para cerrar pickers en iOS */}
-              {Platform.OS === 'ios' && (mostrarDatePicker || mostrarTimePicker) && (
-                <TouchableOpacity
-                  style={styles.botonCerrarPicker}
-                  onPress={cerrarDatePickers}
-                >
-                  <Text style={styles.textoCerrarPicker}>✓ Confirmar</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.fechaHoraResumen}>
-                <Text style={styles.fechaHoraResumenTexto}>
-                  Programado para: {fechaHora.toLocaleString('es-ES')}
-                </Text>
-              </View>
-            </View>
-
-            {/* DateTimePickers */}
-            {mostrarDatePicker && (
-              <DateTimePicker
-                value={fechaHora}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                onChange={onFechaChange}
-                minimumDate={new Date()}
-                locale="es-ES"
-              />
-            )}
-
-            {mostrarTimePicker && (
-              <DateTimePicker
-                value={fechaHora}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                onChange={onTimeChange}
-                locale="es-ES"
-              />
-            )}
-
-            <View style={styles.medicamentosContainer}>
-              <Text style={styles.medicamentosLabel}>Selecciona un medicamento:</Text>
-              {medicamentosDisponibles.map(renderMedicamento)}
-            </View>
-
-            <TouchableOpacity
-              style={styles.botonCancelar}
-              onPress={cerrarModal}
-            >
-              <Text style={styles.textoBotonCancelar}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onFechaChange={onFechaChange}
+        onTimeChange={onTimeChange}
+        mostrarDatePickerFecha={mostrarDatePickerFecha}
+        mostrarDatePickerHora={mostrarDatePickerHora}
+        cerrarDatePickers={cerrarDatePickers}
+        formatearFecha={formatearFecha}
+        formatearHora={formatearHora}
+        asignarMedicamento={asignarMedicamento}
+        miligramos={miligramos}
+        setMiligramos={setMiligramos}
+        via={via}
+        setVia={setVia}
+      />
     </SafeAreaView>
   );
 }
@@ -519,10 +440,16 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    width: "100%",
-    maxWidth: 400,
+    borderRadius: 18,
+    padding: 24,
+    alignSelf: "center",
+    width: "90%",
+    maxWidth: 380,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
   },
   modalTitulo: {
     fontSize: 18,
@@ -613,7 +540,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  medicamentosContainer: { 
+  medicamentosContainer: {
     maxHeight: 300,
     marginBottom: 15,
   },
@@ -638,8 +565,8 @@ const styles = StyleSheet.create({
     shadowRadius: 1,
     elevation: 1,
   },
-  textoMedicamento: { 
-    fontSize: 16, 
+  textoMedicamento: {
+    fontSize: 16,
     textAlign: "center",
     color: "#495057",
     fontWeight: "500",
