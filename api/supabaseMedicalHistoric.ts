@@ -8,9 +8,12 @@ export interface MedicationHistoryItem {
   dosage: string;
   status: "Tomado" | "Pendiente" | "Saltado";
   patient: string;
+  via: string;
 }
 
-export const fetchMedicationHistory = async (nurseId: number): Promise<MedicationHistoryItem[]> => {
+export const fetchMedicationHistory = async (
+  nurseId: number
+): Promise<MedicationHistoryItem[]> => {
   // 1. Obtener grupo del enfermero
   const { data: nurse, error: nurseError } = await supabase
     .from("users")
@@ -42,17 +45,22 @@ export const fetchMedicationHistory = async (nurseId: number): Promise<Medicatio
   // 3. Obtener historial de medicamentos
   const { data, error } = await supabase
     .from("medication_consumed")
-    .select(`
+    .select(
+      `
       medication_consumed_id,
       date_medication,
+      updated_at,
       fk_schedule_id,
       fk_medication_id,
       fk_user_id,
       medications!fk_medication_id(medications),
       schedules!fk_schedule_id(schedule),
       users!fk_user_id(user_name),
-      created_at
-    `)
+      created_at,
+      miligrams,
+      via
+    `
+    )
     .in("fk_user_id", patientIDs)
     .order("created_at", { ascending: false });
 
@@ -67,28 +75,42 @@ export const fetchMedicationHistory = async (nurseId: number): Promise<Medicatio
 
   return data
     .filter((item: any) => {
-      const baseDate = item.date_medication ? new Date(item.date_medication) : new Date(item.created_at);
+      const baseDate = item.date_medication
+        ? new Date(item.date_medication)
+        : new Date(item.created_at);
       return baseDate >= thirtyDaysAgo;
     })
     .map((item: any) => {
-      const dateObj = item.date_medication ? new Date(item.date_medication) : null;
+      const dateObj = item.date_medication
+        ? new Date(item.date_medication)
+        : null;
       const scheduleTime = item.schedules?.schedule || "00:00:00";
 
-      const dateStr = (dateObj ?? new Date(item.created_at)).toLocaleDateString("es-MX");
-      const timeStr = dateObj?.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) ?? scheduleTime;
+      const dateStr = (dateObj ?? new Date(item.created_at)).toLocaleDateString(
+        "es-MX"
+      );
+      const timeStr =
+        dateObj?.toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }) ?? scheduleTime;
 
+      // Nueva lógica de status
       let status: MedicationHistoryItem["status"] = "Pendiente";
-
-      if (dateObj) {
+      const updatedAt = item.updated_at;
+      const dateMedication = item.date_medication
+        ? new Date(item.date_medication)
+        : null;
+      let updatedDate: Date | null = null;
+      if (updatedAt && updatedAt !== "") {
+        updatedDate = new Date(updatedAt);
+      }
+      if (dateMedication && dateMedication > now) {
+        status = "Pendiente";
+      } else if (!updatedAt || updatedAt === "") {
+        status = "Saltado";
+      } else if (updatedAt) {
         status = "Tomado";
-      } else {
-        const [hour, minute] = scheduleTime.split(":").map(Number);
-        const scheduledDate = new Date(item.created_at);
-        scheduledDate.setHours(hour);
-        scheduledDate.setMinutes(minute);
-        scheduledDate.setSeconds(0);
-
-        status = now < scheduledDate ? "Pendiente" : "Saltado";
       }
 
       return {
@@ -97,7 +119,8 @@ export const fetchMedicationHistory = async (nurseId: number): Promise<Medicatio
         patient: item.users?.user_name ?? "Paciente desconocido",
         date: dateStr,
         time: timeStr,
-        dosage: "500mg",
+        dosage: `${item.miligrams}mg`,
+        via: item.via || "Oral",
         status,
       };
     });

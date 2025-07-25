@@ -11,8 +11,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import ListaUsuarios from "../../components/ListaUsuarios";
-import ModalAsignarMedicamento from "../../components/ModalAsignarMedicamento";
+import Header from "../../components/asignarmeds/Header";
+import Loading from "../../components/asignarmeds/Loading";
+import UsuariosList from "../../components/asignarmeds/UsuariosList";
+import ModalAsignar from "../../components/asignarmeds/ModalAsignar";
 
 interface MedicamentoAsignado {
   id: number;
@@ -358,29 +360,17 @@ export default function AsignacionSimpleScreen() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Cargando datos...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <Loading />;
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Asignación de Medicamentos</Text>
-        <Text style={styles.subtitulo}>
-          {usuarios.filter((u) => u.medicamentos.length > 0).length} de{" "}
-          {usuarios.length} usuarios con medicamento
-        </Text>
-      </View>
-
-      <ListaUsuarios
+      <Header
+        usuariosConMedicamento={usuarios.filter((u) => u.medicamentos.length > 0).length}
+        totalUsuarios={usuarios.length}
+      />
+      <UsuariosList
         usuarios={usuarios}
         isSmallScreen={isSmallScreen}
         isLargeScreen={isLargeScreen}
@@ -390,8 +380,7 @@ export default function AsignacionSimpleScreen() {
         loading={loading}
         cargarDatos={cargarDatos}
       />
-
-      <ModalAsignarMedicamento
+      <ModalAsignar
         visible={modalVisible}
         usuarioSeleccionado={usuarioSeleccionado}
         fechaHora={fechaHora}
