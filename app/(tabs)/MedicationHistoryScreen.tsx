@@ -1,5 +1,15 @@
+import { MaterialIcons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View, TouchableOpacity, RefreshControl } from "react-native";
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import {
   fetchMedicationHistory,
   MedicationHistoryItem,
@@ -8,13 +18,11 @@ import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
 import { getSession } from "../../utils/session";
 import { supabase } from "../../utils/supabase";
-import { MaterialIcons } from "@expo/vector-icons";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 
 export default function MedicationHistoryScreen() {
   const [history, setHistory] = useState<MedicationHistoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setRefreshing(true);
@@ -80,14 +88,14 @@ export default function MedicationHistoryScreen() {
       const fechaActual = new Date().toISOString();
       const { error } = await supabase
         .from("medication_consumed")
-        .update({ 
+        .update({
           updated_at: fechaActual,
-          status: "Tomado"
+          status: "Tomado",
         })
         .eq("medication_consumed_id", consumoId);
-        
+
       if (error) throw error;
-      
+
       await load();
     } catch (error) {
       alert("No se pudo actualizar el estado del medicamento");
@@ -110,19 +118,62 @@ export default function MedicationHistoryScreen() {
           Historial de Medicamentos
         </ThemedText>
         <ThemedText style={styles.subtitle}>
-          {history.length > 0 
-            ? "Tus registros de medicamentos" 
+          {history.length > 0
+            ? "Tus registros de medicamentos"
             : "No hay registros recientes"}
         </ThemedText>
+        {/* Buscador */}
+        <View style={{ marginTop: 16 }}>
+          <View
+            style={{
+              backgroundColor: "#f1f5f9",
+              borderRadius: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+            }}
+          >
+            <MaterialIcons name="search" size={22} color="#64748b" />
+            <ThemedText
+              style={{ color: "#64748b", fontSize: 16, marginRight: 8 }}
+            >
+              {" "}
+            </ThemedText>
+            <View style={{ flex: 1 }}>
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Buscar medicamento..."
+                placeholderTextColor="#64748b"
+                style={{
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                  fontSize: 16,
+                  color: "#1e293b",
+                  paddingVertical: 10,
+                  width: "100%",
+                }}
+              />
+            </View>
+          </View>
+        </View>
       </View>
 
       <FlatList
-        data={history}
+        data={history.filter((item) => {
+          const q = search.toLowerCase();
+          return (
+            item.name?.toLowerCase().includes(q) ||
+            item.time?.toLowerCase().includes(q) ||
+            formatDate(item.date)?.toLowerCase().includes(q) ||
+            item.patient?.toLowerCase().includes(q)
+          );
+        })}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={load}
             colors={["#3b82f6"]}
             tintColor="#3b82f6"
@@ -132,31 +183,64 @@ export default function MedicationHistoryScreen() {
           const statusConfig = getStatusConfig(item.status);
           return (
             <View style={[styles.item, getStatusStyle(item.status)]}>
+              {/* ...existing code... */}
               <View style={styles.itemHeader}>
                 <View style={styles.medicationInfo}>
                   <ThemedText style={styles.name}>{item.name}</ThemedText>
                   <View style={styles.detailsRow}>
-                    <View style={[styles.dosage, { backgroundColor: statusConfig.bgColor }]}>
-                      <MaterialIcons name="medication" size={16} color={statusConfig.color} />
-                      <ThemedText style={[styles.dosageText, { color: statusConfig.color }]}>
+                    <View
+                      style={[
+                        styles.dosage,
+                        { backgroundColor: statusConfig.bgColor },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="medication"
+                        size={16}
+                        color={statusConfig.color}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.dosageText,
+                          { color: statusConfig.color },
+                        ]}
+                      >
                         {item.dosage}
                       </ThemedText>
                     </View>
-                    <View style={[styles.via, { backgroundColor: statusConfig.bgColor }]}>
-                      <MaterialIcons name="alt-route" size={16} color={statusConfig.color} />
-                      <ThemedText style={[styles.viaText, { color: statusConfig.color }]}>
+                    <View
+                      style={[
+                        styles.via,
+                        { backgroundColor: statusConfig.bgColor },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="alt-route"
+                        size={16}
+                        color={statusConfig.color}
+                      />
+                      <ThemedText
+                        style={[styles.viaText, { color: statusConfig.color }]}
+                      >
                         {item.via}
                       </ThemedText>
                     </View>
                   </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                  <MaterialIcons 
-                    name={statusConfig.icon as any} 
-                    size={16} 
-                    color={statusConfig.color} 
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: statusConfig.bgColor },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={statusConfig.icon as any}
+                    size={16}
+                    color={statusConfig.color}
                   />
-                  <ThemedText style={[styles.statusText, { color: statusConfig.color }]}>
+                  <ThemedText
+                    style={[styles.statusText, { color: statusConfig.color }]}
+                  >
                     {item.status}
                   </ThemedText>
                 </View>
@@ -165,9 +249,7 @@ export default function MedicationHistoryScreen() {
               <View style={styles.itemFooter}>
                 <View style={styles.timeInfo}>
                   <MaterialIcons name="access-time" size={16} color="#64748b" />
-                  <ThemedText style={styles.timeText}>
-                    {item.time}
-                  </ThemedText>
+                  <ThemedText style={styles.timeText}>{item.time}</ThemedText>
                   <ThemedText style={styles.dateText}>
                     {formatDate(item.date)}
                   </ThemedText>
@@ -323,7 +405,6 @@ const styles = StyleSheet.create({
   dateText: {
     color: "#94a3b8",
     fontSize: 13,
-    
   },
   patientInfo: {
     flexDirection: "row",
