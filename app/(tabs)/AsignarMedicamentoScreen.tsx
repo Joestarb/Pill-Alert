@@ -1,18 +1,17 @@
 import { supabase } from "@/utils/supabase";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
-  Text,
   useWindowDimensions,
-  View,
 } from "react-native";
-import ListaUsuarios from "../../components/ListaUsuarios";
-import ModalAsignarMedicamento from "../../components/ModalAsignarMedicamento";
+import Header from "../../components/asignarmeds/Header";
+import Loading from "../../components/asignarmeds/Loading";
+import ModalAsignar from "../../components/asignarmeds/ModalAsignar";
+import UsuariosList from "../../components/asignarmeds/UsuariosList";
 
 interface MedicamentoAsignado {
   id: number;
@@ -48,6 +47,9 @@ export default function AsignacionSimpleScreen() {
   const [fechaHora, setFechaHora] = useState<Date>(new Date()); // Inicializar con fecha actual
   const [mostrarDatePicker, setMostrarDatePicker] = useState<boolean>(false);
   const [mostrarTimePicker, setMostrarTimePicker] = useState<boolean>(false);
+  // NUEVOS CAMPOS PARA INTERVALOS
+  const [intervaloHoras, setIntervaloHoras] = useState<number>(24); // default 24h
+  const [cantidadDias, setCantidadDias] = useState<number>(1); // default 1 día
 
   const { width, height } = useWindowDimensions();
   const isSmallScreen = width < 360;
@@ -136,6 +138,8 @@ export default function AsignacionSimpleScreen() {
     setFechaHora(new Date()); // Reinicia con la fecha actual
     setMiligramos("");
     setVia("oral");
+    setIntervaloHoras(24);
+    setCantidadDias(1);
     setModalVisible(true);
   };
 
@@ -145,6 +149,8 @@ export default function AsignacionSimpleScreen() {
     cerrarDatePickers(); // Usar la nueva función
     setMiligramos("");
     setVia("oral");
+    setIntervaloHoras(24);
+    setCantidadDias(1);
   };
 
   const onFechaChange = (event: any, selectedDate?: Date) => {
@@ -230,31 +236,78 @@ export default function AsignacionSimpleScreen() {
       Alert.alert("Error", "Por favor ingresa los miligramos correctamente.");
       return;
     }
+    if (!intervaloHoras || ![4, 8, 12, 24, 48].includes(intervaloHoras)) {
+      Alert.alert(
+        "Error",
+        "Selecciona un intervalo válido (4, 8, 12, 24, 48 horas)"
+      );
+      return;
+    }
+    if (!cantidadDias || cantidadDias < 1) {
+      Alert.alert("Error", "Selecciona una cantidad de días válida");
+      return;
+    }
 
     try {
-      const existe = await supabase
+      // Generar todas las fechas de toma
+      const registros: any[] = [];
+      const fechas: string[] = [];
+      for (let dia = 0; dia < cantidadDias; dia++) {
+        for (let h = 0; h < 24; h += intervaloHoras) {
+          const nuevaFecha = new Date(fechaHora);
+          nuevaFecha.setDate(fechaHora.getDate() + dia);
+          nuevaFecha.setHours(fechaHora.getHours() + h);
+          // Si se pasa de las 24h, sumar al día siguiente
+          if (nuevaFecha.getHours() >= 24) {
+            nuevaFecha.setDate(
+              nuevaFecha.getDate() + Math.floor(nuevaFecha.getHours() / 24)
+            );
+            nuevaFecha.setHours(nuevaFecha.getHours() % 24);
+          }
+          fechas.push(nuevaFecha.toISOString());
+        }
+      }
+
+      // Verificar si ya existen registros para alguna de esas fechas
+      const { data: existentes, error: errorExistentes } = await supabase
         .from("medication_consumed")
-        .select("*")
+        .select("date_medication")
         .eq("fk_user_id", usuarioSeleccionado.id)
         .eq("fk_medication_id", medicamento.id)
-        .eq("fk_schedule_id", 1);
+        .eq("fk_schedule_id", 1)
+        .in("date_medication", fechas);
 
-      if (existe.data && existe.data.length > 0) {
+      if (errorExistentes) {
+        console.error("Error verificando duplicados:", errorExistentes);
+        Alert.alert("Error", "No se pudo verificar duplicados");
+        return;
+      }
+      const fechasExistentes = (existentes || []).map((e) => e.date_medication);
+      const fechasAInsertar = fechas.filter(
+        (f) => !fechasExistentes.includes(f)
+      );
+      if (fechasAInsertar.length === 0) {
         Alert.alert(
           "Error",
-          "Este medicamento ya está asignado a este usuario para este horario."
+          "Ya existen todos los registros para este intervalo"
         );
         return;
       }
 
-      const { error } = await supabase.from("medication_consumed").insert({
-        fk_user_id: usuarioSeleccionado.id,
-        fk_medication_id: medicamento.id,
-        fk_schedule_id: 1,
-        date_medication: fechaHora.toISOString(),
-        miligrams: Number(miligramos),
-        via,
-      });
+      for (const fecha of fechasAInsertar) {
+        registros.push({
+          fk_user_id: usuarioSeleccionado.id,
+          fk_medication_id: medicamento.id,
+          fk_schedule_id: 1,
+          date_medication: fecha,
+          miligrams: Number(miligramos),
+          via,
+        });
+      }
+
+      const { error } = await supabase
+        .from("medication_consumed")
+        .insert(registros);
 
       if (error) {
         console.error("Error asignando medicamento:", error);
@@ -262,10 +315,11 @@ export default function AsignacionSimpleScreen() {
         return;
       }
 
+      // Actualizar el estado local solo con la primera toma (opcional: podrías mostrar todas)
       const nuevoMedicamento: MedicamentoAsignado = {
         id: medicamento.id,
         nombre: medicamento.nombre,
-        fecha: fechaHora.toISOString(),
+        fecha: fechasAInsertar[0],
       };
 
       setUsuarios((prev) =>
@@ -281,7 +335,10 @@ export default function AsignacionSimpleScreen() {
 
       setMedicamentoSeleccionado(null);
       cerrarModal();
-      Alert.alert("Éxito", "Medicamento asignado correctamente");
+      Alert.alert(
+        "Éxito",
+        `Medicamento asignado correctamente (${fechasAInsertar.length} tomas)`
+      );
     } catch (error) {
       console.error("Error asignando medicamento:", error);
       Alert.alert("Error", "No se pudo asignar el medicamento");
@@ -358,29 +415,19 @@ export default function AsignacionSimpleScreen() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Cargando datos...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <Loading />;
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Asignación de Medicamentos</Text>
-        <Text style={styles.subtitulo}>
-          {usuarios.filter((u) => u.medicamentos.length > 0).length} de{" "}
-          {usuarios.length} usuarios con medicamento
-        </Text>
-      </View>
-
-      <ListaUsuarios
+      <Header
+        usuariosConMedicamento={
+          usuarios.filter((u) => u.medicamentos.length > 0).length
+        }
+        totalUsuarios={usuarios.length}
+      />
+      <UsuariosList
         usuarios={usuarios}
         isSmallScreen={isSmallScreen}
         isLargeScreen={isLargeScreen}
@@ -390,8 +437,7 @@ export default function AsignacionSimpleScreen() {
         loading={loading}
         cargarDatos={cargarDatos}
       />
-
-      <ModalAsignarMedicamento
+      <ModalAsignar
         visible={modalVisible}
         usuarioSeleccionado={usuarioSeleccionado}
         fechaHora={fechaHora}
@@ -411,6 +457,10 @@ export default function AsignacionSimpleScreen() {
         setMiligramos={setMiligramos}
         via={via}
         setVia={setVia}
+        intervaloHoras={intervaloHoras}
+        setIntervaloHoras={setIntervaloHoras}
+        cantidadDias={cantidadDias}
+        setCantidadDias={setCantidadDias}
       />
     </SafeAreaView>
   );

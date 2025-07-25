@@ -1,23 +1,115 @@
+import { MaterialIcons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, View, Text, Button } from "react-native"; // ← importa Button
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  fetchMedicationHistory,
+  MedicationHistoryItem,
+} from "../../api/supabaseMedicalHistoric";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
-import { fetchMedicationHistory, MedicationHistoryItem } from "../../api/supabaseMedicalHistoric";
 import { getSession } from "../../utils/session";
+import { supabase } from "../../utils/supabase";
 
 export default function MedicationHistoryScreen() {
   const [history, setHistory] = useState<MedicationHistoryItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
-    const session = await getSession();
-    if (!session?.user_id) return;
-    const result = await fetchMedicationHistory(session.user_id);
-    setHistory(result);
+    setRefreshing(true);
+    try {
+      const session = await getSession();
+      if (!session?.user_id) return;
+      const result = await fetchMedicationHistory(session.user_id);
+      setHistory(result);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const getStatusStyle = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "tomado":
+        return styles.status_tomado;
+      case "pendiente":
+        return styles.status_pendiente;
+      case "saltado":
+        return styles.status_saltado;
+      default:
+        return {};
+    }
+  };
+
+  const getStatusConfig = (status: string) => {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "tomado":
+        return {
+          color: "#10b981",
+          bgColor: "#d1fae5",
+          icon: "check-circle",
+        };
+      case "pendiente":
+        return {
+          color: "#f59e0b",
+          bgColor: "#fef3c7",
+          icon: "schedule",
+        };
+      case "saltado":
+        return {
+          color: "#ef4444",
+          bgColor: "#fee2e2",
+          icon: "cancel",
+        };
+      default:
+        return {
+          color: "#64748b",
+          bgColor: "#f1f5f9",
+          icon: "help",
+        };
+    }
+  };
+
+  const marcarComoTomado = async (consumoId: number) => {
+    try {
+      const fechaActual = new Date().toISOString();
+      const { error } = await supabase
+        .from("medication_consumed")
+        .update({
+          updated_at: fechaActual,
+          status: "Tomado",
+        })
+        .eq("medication_consumed_id", consumoId);
+
+      if (error) throw error;
+
+      await load();
+    } catch (error) {
+      alert("No se pudo actualizar el estado del medicamento");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, "PPP", { locale: es });
+    } catch {
+      return dateString;
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -25,40 +117,177 @@ export default function MedicationHistoryScreen() {
         <ThemedText type="title" style={styles.title}>
           Historial de Medicamentos
         </ThemedText>
-        <ThemedText style={styles.subtitle}>Últimos 30 días</ThemedText>
-        <View style={styles.buttonContainer}>
-          <Button title="Actualizar" onPress={load} color="#3b82f6" />
+        <ThemedText style={styles.subtitle}>
+          {history.length > 0
+            ? "Tus registros de medicamentos"
+            : "No hay registros recientes"}
+        </ThemedText>
+        {/* Buscador */}
+        <View style={{ marginTop: 16 }}>
+          <View
+            style={{
+              backgroundColor: "#f1f5f9",
+              borderRadius: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+            }}
+          >
+            <MaterialIcons name="search" size={22} color="#64748b" />
+            <ThemedText
+              style={{ color: "#64748b", fontSize: 16, marginRight: 8 }}
+            >
+              {" "}
+            </ThemedText>
+            <View style={{ flex: 1 }}>
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Buscar medicamento..."
+                placeholderTextColor="#64748b"
+                style={{
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                  fontSize: 16,
+                  color: "#1e293b",
+                  paddingVertical: 10,
+                  width: "100%",
+                }}
+              />
+            </View>
+          </View>
         </View>
       </View>
 
       <FlatList
-        data={history}
+        data={history.filter((item) => {
+          const q = search.toLowerCase();
+          return (
+            item.name?.toLowerCase().includes(q) ||
+            item.time?.toLowerCase().includes(q) ||
+            formatDate(item.date)?.toLowerCase().includes(q) ||
+            item.patient?.toLowerCase().includes(q)
+          );
+        })}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={[styles.item, styles[`status_${item.status.toLowerCase()}`]]}>
-            <View style={styles.itemHeader}>
-              <ThemedText style={styles.name}>{item.name}</ThemedText>
-              <ThemedText style={styles.dosage}>{item.dosage}</ThemedText>
-            </View>
-            <View style={styles.itemFooter}>
-              <View>
-                <ThemedText style={styles.date}>
-                  {item.date} • {item.time}
-                </ThemedText>
-                <Text style={{ fontSize: 14, color: "#64748b" }}>
-                  Paciente: <Text style={{ fontWeight: "600" }}>{item.patient}</Text>
-                </Text>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={load}
+            colors={["#3b82f6"]}
+            tintColor="#3b82f6"
+          />
+        }
+        renderItem={({ item }) => {
+          const statusConfig = getStatusConfig(item.status);
+          return (
+            <View style={[styles.item, getStatusStyle(item.status)]}>
+              {/* ...existing code... */}
+              <View style={styles.itemHeader}>
+                <View style={styles.medicationInfo}>
+                  <ThemedText style={styles.name}>{item.name}</ThemedText>
+                  <View style={styles.detailsRow}>
+                    <View
+                      style={[
+                        styles.dosage,
+                        { backgroundColor: statusConfig.bgColor },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="medication"
+                        size={16}
+                        color={statusConfig.color}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.dosageText,
+                          { color: statusConfig.color },
+                        ]}
+                      >
+                        {item.dosage}
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.via,
+                        { backgroundColor: statusConfig.bgColor },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="alt-route"
+                        size={16}
+                        color={statusConfig.color}
+                      />
+                      <ThemedText
+                        style={[styles.viaText, { color: statusConfig.color }]}
+                      >
+                        {item.via}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: statusConfig.bgColor },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={statusConfig.icon as any}
+                    size={16}
+                    color={statusConfig.color}
+                  />
+                  <ThemedText
+                    style={[styles.statusText, { color: statusConfig.color }]}
+                  >
+                    {item.status}
+                  </ThemedText>
+                </View>
               </View>
-              <ThemedText style={[styles.status, styles[`statusText_${item.status.toLowerCase()}`]]}>
-                {item.status}
-              </ThemedText>
+
+              <View style={styles.itemFooter}>
+                <View style={styles.timeInfo}>
+                  <MaterialIcons name="access-time" size={16} color="#64748b" />
+                  <ThemedText style={styles.timeText}>{item.time}</ThemedText>
+                  <ThemedText style={styles.dateText}>
+                    {formatDate(item.date)}
+                  </ThemedText>
+                </View>
+
+                {item.status !== "Tomado" && item.id && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => marcarComoTomado(item.id)}
+                  >
+                    <MaterialIcons name="done" size={18} color="#fff" />
+                    <ThemedText style={styles.actionButtonText}>
+                      Marcar como tomado
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {item.patient && (
+                <View style={styles.patientInfo}>
+                  <MaterialIcons name="person" size={16} color="#64748b" />
+                  <ThemedText style={styles.patientText}>
+                    {item.patient}
+                  </ThemedText>
+                </View>
+              )}
             </View>
-          </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <ThemedText style={styles.emptyText}>No hay registros en tu historial</ThemedText>
+            <MaterialIcons name="medication" size={48} color="#cbd5e1" />
+            <ThemedText style={styles.emptyText}>
+              No hay registros en tu historial
+            </ThemedText>
+            <ThemedText style={styles.emptySubtext}>
+              Los medicamentos que tomes aparecerán aquí
+            </ThemedText>
           </View>
         }
       />
@@ -69,78 +298,141 @@ export default function MedicationHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     backgroundColor: "#f8fafc",
   },
   header: {
-    marginBottom: 24,
-    paddingTop: 16,
-  },
-  buttonContainer: {
-    marginTop: 12,
-    alignSelf: "flex-start",
+    marginBottom: 16,
+    paddingTop: 24,
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#1e293b",
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
     color: "#64748b",
-    marginTop: 4,
   },
   listContent: {
     paddingBottom: 24,
   },
   item: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    borderLeftWidth: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    borderLeftWidth: 5,
   },
   itemHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    marginBottom: 12,
   },
-  itemFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  medicationInfo: {
+    flex: 1,
   },
   name: {
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 18,
     color: "#1e293b",
+    marginBottom: 8,
+  },
+  detailsRow: {
+    flexDirection: "row",
+    gap: 8,
   },
   dosage: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  dosageText: {
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  via: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  viaText: {
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  statusText: {
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  itemFooter: {
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  timeInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  timeText: {
+    color: "#64748b",
+    fontSize: 14,
     fontWeight: "500",
-    fontSize: 14,
-    color: "#64748b",
-    backgroundColor: "#f1f5f9",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    marginRight: 10,
   },
-  date: {
+  dateText: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  patientInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  patientText: {
     color: "#64748b",
     fontSize: 14,
   },
-  status: {
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#10b981",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  actionButtonText: {
+    color: "#fff",
     fontWeight: "600",
     fontSize: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    overflow: "hidden",
+    width: "100%",
   },
   status_tomado: {
     borderLeftColor: "#10b981",
@@ -151,26 +443,23 @@ const styles = StyleSheet.create({
   status_saltado: {
     borderLeftColor: "#ef4444",
   },
-  statusText_tomado: {
-    color: "#10b981",
-    backgroundColor: "#d1fae5",
-  },
-  statusText_pendiente: {
-    color: "#f59e0b",
-    backgroundColor: "#fef3c7",
-  },
-  statusText_saltado: {
-    color: "#ef4444",
-    backgroundColor: "#fee2e2",
-  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyText: {
     color: "#94a3b8",
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    color: "#cbd5e1",
+    fontSize: 14,
+    textAlign: "center",
+    paddingHorizontal: 40,
   },
 });

@@ -35,17 +35,25 @@ const ListaUsuarios: React.FC<ListaUsuariosProps> = ({
   loading,
   cargarDatos,
 }) => {
-  const renderUsuario = ({ item }: { item: Usuario }) => (
-    <UserCard
-      nombre={item.nombre}
-      medicamentos={item.medicamentos}
-      onAsignar={() => onAsignar(item)}
-      onEliminarMedicamento={(nombre) => onEliminarMedicamento(item.id, nombre)}
-      onEliminarTodos={() => onEliminarTodos(item.id)}
-      isSmallScreen={isSmallScreen}
-      isLargeScreen={isLargeScreen}
-    />
-  );
+  const renderUsuario = ({ item }: { item: Usuario }) => {
+    // Filtrar medicamentos únicos por nombre
+    const medicamentosUnicos = item.medicamentos.filter(
+      (med, idx, arr) =>
+        arr.findIndex(m => m.nombre === med.nombre) === idx
+    );
+
+    return (
+      <UserCard
+        nombre={item.nombre}
+        medicamentos={medicamentosUnicos}
+        onAsignar={() => onAsignar(item)}
+        onEliminarMedicamento={(medicamentoId) => onEliminarMedicamento(item.id, medicamentoId)}
+        onEliminarTodos={() => onEliminarTodos(item.id)}
+        isSmallScreen={isSmallScreen}
+        isLargeScreen={isLargeScreen}
+      />
+    );
+  };
 
   return (
     <FlatList
