@@ -1,181 +1,176 @@
-import { Redirect } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { Text, Layout } from "@ui-kitten/components";
+import { useRouter, Redirect } from "expo-router";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../contexts/store";
-import { View, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import NotiModal from "@/components/NotiModal";
-import React, { useState, useEffect } from "react";
-import { ThemedText } from "@/components/ThemedText";
-import MedicationCard from "@/components/MedicationCard";
 import { getSession } from "@/utils/session";
 import { fetchMedication } from "@/api/supabaseMedication";
+import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 
 export default function HomeScreen() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
 
-  const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [medications, setMedications] = useState<any[]>([]);
-  const [groupName, setGroupName] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function cargarUsuarioYMedicamentos() {
-      setLoading(true);
-      const usuario = await getSession();
-      if (usuario) {
-        setUser(usuario);
+    async function loadUserAndMeds() {
+      const sessionUser = await getSession();
+      setUser(sessionUser || null);
+
+      if (sessionUser?.user_id) {
         try {
-          const result = await fetchMedication(usuario.user_id);
-          setMedications(result.items);
-          setGroupName(result.groupName);
-        } catch (e) {
+          const result = await fetchMedication(sessionUser.user_id);
+          setMedications(result.items || []);
+        } catch {
           setMedications([]);
-          setGroupName("");
         }
-      } else {
-        setUser(null);
-        setMedications([]);
-        setGroupName("");
       }
-      setLoading(false);
     }
-    cargarUsuarioYMedicamentos();
+
+    loadUserAndMeds();
   }, []);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Sin fecha";
-    const options: Intl.DateTimeFormatOptions = {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    };
-    return date.toLocaleString("es-MX", options);
-  };
-
-  const recentActivity = [
-    {
-      id: "1",
-      action: "Tomó Paracetamol",
-      time: "Hace 2 horas",
-      status: "completed",
-    },
-    {
-      id: "2",
-      action: "Recordatorio Ibuprofeno",
-      time: "Hace 5 horas",
-      status: "missed",
-    },
-  ];
 
   if (!isAuthenticated) {
     return <Redirect href="/login" />;
   }
 
   return (
-    <View style={styles.container}>
- 
-    </View>
+    <Layout style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Encabezado */}
+        <View style={styles.header}>
+          <Text category="h5" style={styles.title}>
+            ¡Hola {user?.nombre || user?.name || "usuario"}!
+          </Text>
+          <Text appearance="hint">Bienvenido a Pill Alert</Text>
+        </View>
+        {/* Bienvenida */}
+        <View style={styles.card}>
+          <Text category="s1" style={styles.cardText}>
+            Bienvenido a <Text style={{ fontWeight: "bold" }}>Pill Alert</Text>,
+            tu asistente inteligente para el control de medicamentos.
+          </Text>
+        </View>
+        {/* Contador de medicamentos */}
+        <View style={styles.counterBox}>
+          <Ionicons name="medkit-outline" size={28} color="#0a7ea4" />
+          <View>
+            <Text category="s2" style={{ fontWeight: "600" }}>
+              Medicamentos activos
+            </Text>
+            <Text>{medications.length} en total</Text>
+          </View>
+        </View>
+
+        {/* Accesos rápidos */}
+        <View style={styles.quickAccess}>
+          <TouchableOpacity
+            style={styles.accessCard}
+            onPress={() => router.push("/MedicationCalendarScreen")}
+          >
+            <Ionicons name="calendar" size={26} color="#0a7ea4" />
+            <Text style={styles.accessText}>Calendario</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.accessCard}
+            onPress={() => router.push("/AsignarMedicamentoScreen")}
+          >
+            <MaterialIcons name="assignment" size={26} color="#0a7ea4" />
+            <Text style={styles.accessText}>Asignar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.accessCard}
+            onPress={() => router.push("/MedicationHistoryScreen")}
+          >
+            <FontAwesome5 name="history" size={22} color="#0a7ea4" />
+            <Text style={styles.accessText}>Historial</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </Layout>
   );
 }
 
 const styles = StyleSheet.create({
-  // Tus estilos originales...
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 20,
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#e0e7ff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  greeting: {
-    fontSize: 18,
-    color: "#64748b",
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ef4444",
+  container: {
+    flex: 1,
+    backgroundColor: "#F2F6FA",
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+    padding: 24,
   },
-  section: {
-    marginBottom: 32,
+  header: {
+    marginBottom: 20,
   },
-  sectionHeader: {
+    card: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  cardText: {
+    fontSize: 15,
+    color: "#333",
+    lineHeight: 22,
+  },
+  title: {
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  counterBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  quickAccess: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 24,
   },
-  seeAll: {
-    color: "#4f8cff",
+  accessCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  accessText: {
+    marginTop: 6,
     fontSize: 14,
     fontWeight: "500",
-  },
-  activityItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  activityIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  completedIcon: {
-    backgroundColor: "#d1fae5",
-  },
-  missedIcon: {
-    backgroundColor: "#fee2e2",
-  },
-  activityText: {
-    flex: 1,
-  },
-  activityAction: {
-    fontSize: 16,
-    color: "#1e293b",
-    marginBottom: 2,
-  },
-  activityTime: {
-    fontSize: 14,
-    color: "#64748b",
+    color: "#111",
   },
 });
