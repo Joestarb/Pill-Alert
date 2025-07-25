@@ -2,6 +2,10 @@ import React from "react";
 import ModalAsignarMedicamento from "../../components/ModalAsignarMedicamento";
 
 interface ModalAsignarProps {
+  intervaloHoras: number;
+  setIntervaloHoras: (v: number) => void;
+  cantidadDias: number;
+  setCantidadDias: (v: number) => void;
   visible: boolean;
   usuarioSeleccionado: any;
   fechaHora: Date;

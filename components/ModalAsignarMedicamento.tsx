@@ -1,15 +1,15 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import React from "react";
 import {
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
 
 interface Medicamento {
@@ -18,6 +18,10 @@ interface Medicamento {
 }
 
 interface ModalAsignarMedicamentoProps {
+  intervaloHoras: number;
+  setIntervaloHoras: (v: number) => void;
+  cantidadDias: number;
+  setCantidadDias: (v: number) => void;
   visible: boolean;
   usuarioSeleccionado: { nombre: string } | null;
   fechaHora: Date;
@@ -59,6 +63,10 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
   setMiligramos,
   via,
   setVia,
+  intervaloHoras,
+  setIntervaloHoras,
+  cantidadDias,
+  setCantidadDias,
 }) => {
   const { height } = useWindowDimensions();
 
@@ -81,7 +89,7 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
     >
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContainer, { maxHeight: height * 0.8 }]}>
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
           >
@@ -94,13 +102,15 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
 
             {/* Sección de fecha y hora */}
             <View style={styles.seccion}>
-              <Text style={styles.seccionTitulo}>Fecha y hora del medicamento:</Text>
-              
+              <Text style={styles.seccionTitulo}>
+                Fecha y hora del medicamento:
+              </Text>
+
               <View style={styles.fechaHoraContainer}>
                 <TouchableOpacity
                   style={[
                     styles.fechaHoraBoton,
-                    mostrarDatePicker && styles.botonActivo
+                    mostrarDatePicker && styles.botonActivo,
                   ]}
                   onPress={mostrarDatePickerFecha}
                 >
@@ -113,7 +123,7 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.fechaHoraBoton,
-                    mostrarTimePicker && styles.botonActivo
+                    mostrarTimePicker && styles.botonActivo,
                   ]}
                   onPress={mostrarDatePickerHora}
                 >
@@ -126,7 +136,8 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
 
               <View style={styles.resumenFechaHora}>
                 <Text style={styles.resumenTexto}>
-                  Programado para: {formatearFecha(fechaHora)}, {formatearHora(fechaHora)}
+                  Programado para: {formatearFecha(fechaHora)},{" "}
+                  {formatearHora(fechaHora)}
                 </Text>
               </View>
             </View>
@@ -147,33 +158,85 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
               </View>
             </View>
 
-            {/* Sección de vía de administración */}
+            {/* Sección de intervalo de horas */}
             <View style={styles.seccion}>
-              <Text style={styles.seccionTitulo}>Vía de administración:</Text>
-              <View style={styles.viasContainer}>
-                {["Oral", "Intravenosa", "Supositorio", "Unguento"].map((opcion) => (
+              <Text style={styles.seccionTitulo}>Intervalo de horas:</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {[4, 8, 12, 24, 48].map((h) => (
                   <TouchableOpacity
-                    key={opcion}
+                    key={h}
                     style={[
                       styles.viaBoton,
-                      via.toLowerCase() === opcion.toLowerCase() && styles.viaBotonActivo
+                      intervaloHoras === h && styles.viaBotonActivo,
                     ]}
-                    onPress={() => setVia(opcion.toLowerCase())}
+                    onPress={() => setIntervaloHoras(h)}
                   >
-                    <Text style={[
-                      styles.viaTexto,
-                      via.toLowerCase() === opcion.toLowerCase() && styles.viaTextoActivo
-                    ]}>
-                      {opcion}
+                    <Text
+                      style={[
+                        styles.viaTexto,
+                        intervaloHoras === h && styles.viaTextoActivo,
+                      ]}
+                    >
+                      {h}h
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
+            {/* Sección de cantidad de días */}
+            <View style={styles.seccion}>
+              <Text style={styles.seccionTitulo}>Cantidad de días:</Text>
+              <View style={styles.miligramosContainer}>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={cantidadDias.toString()}
+                  onChangeText={(v) =>
+                    setCantidadDias(Number(v.replace(/[^0-9]/g, "")))
+                  }
+                  placeholder="Ej: 3"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.mgText}>días</Text>
+              </View>
+            </View>
+
+            {/* Sección de vía de administración */}
+            <View style={styles.seccion}>
+              <Text style={styles.seccionTitulo}>Vía de administración:</Text>
+              <View style={styles.viasContainer}>
+                {["Oral", "Intravenosa", "Supositorio", "Unguento"].map(
+                  (opcion) => (
+                    <TouchableOpacity
+                      key={opcion}
+                      style={[
+                        styles.viaBoton,
+                        via.toLowerCase() === opcion.toLowerCase() &&
+                          styles.viaBotonActivo,
+                      ]}
+                      onPress={() => setVia(opcion.toLowerCase())}
+                    >
+                      <Text
+                        style={[
+                          styles.viaTexto,
+                          via.toLowerCase() === opcion.toLowerCase() &&
+                            styles.viaTextoActivo,
+                        ]}
+                      >
+                        {opcion}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+            </View>
+
             {/* Sección de medicamentos */}
             <View style={styles.seccion}>
-              <Text style={styles.seccionTitulo}>Selecciona un medicamento:</Text>
+              <Text style={styles.seccionTitulo}>
+                Selecciona un medicamento:
+              </Text>
               <View style={styles.medicamentosLista}>
                 {medicamentosDisponibles.map(renderMedicamento)}
               </View>
@@ -200,14 +263,15 @@ const ModalAsignarMedicamento: React.FC<ModalAsignarMedicamentoProps> = ({
               />
             )}
 
-            {Platform.OS === "ios" && (mostrarDatePicker || mostrarTimePicker) && (
-              <TouchableOpacity
-                style={styles.botonConfirmarPicker}
-                onPress={cerrarDatePickers}
-              >
-                <Text style={styles.botonConfirmarTexto}>Confirmar</Text>
-              </TouchableOpacity>
-            )}
+            {Platform.OS === "ios" &&
+              (mostrarDatePicker || mostrarTimePicker) && (
+                <TouchableOpacity
+                  style={styles.botonConfirmarPicker}
+                  onPress={cerrarDatePickers}
+                >
+                  <Text style={styles.botonConfirmarTexto}>Confirmar</Text>
+                </TouchableOpacity>
+              )}
           </ScrollView>
 
           <TouchableOpacity
@@ -246,7 +310,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalTitulo: {
     fontSize: 20,
@@ -374,7 +438,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginTop: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   botonConfirmarTexto: {
     color: "#fff",
